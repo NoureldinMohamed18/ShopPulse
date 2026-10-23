@@ -1,0 +1,68 @@
+# docker compose up --build            -> MongoDB + pipeline (once) + API (:5000) + dashboard (:8050)
+# docker compose --profile airflow up  -> adds Airflow UI on :8080 (user/password printed in its logs)
+
+x-shoppulse: &shoppulse
+  build: .
+  image: shoppulse:latest
+  environment:
+    SHOPPULSE_DATA_DIR: /data
+    MONGO_URI: mongodb://mongo:27017
+    SHOPPULSE_API_KEY: ${SHOPPULSE_API_KEY:-dev-key-change-me}
+    LOG_LEVEL: INFO
+  volumes:
+    - shoppulse_data:/data
+
+services:
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pipeline:                      # one-shot job: seeds the simulated sources, runs ETL, builds the report
+    <<: *shoppulse
+    command: ["python", "-m", "shoppulse", "demo"]
+    depends_on:
+      mongo: { condition: service_healthy }
+    healthcheck: { disable: true }
+    restart: "no"
+
+  api:
+    <<: *shoppulse
+    ports: ["5000:5000"]
+    depends_on:
+      pipeline: { condition: service_completed_successfully }
+
+  dashboard:
+    <<: *shoppulse
+    command: ["python", "-m", "shoppulse", "dashboard", "--host", "0.0.0.0"]
+    ports: ["8050:8050"]
+    depends_on:
+      pipeline: { condition: service_completed_successfully }
+    healthcheck: { disable: true }
+
+  airflow:
+    profiles: ["airflow"]
+    image: apache/airflow:2.10.5-python3.12
+    command: standalone
+    ports: ["8080:8080"]
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      PYTHONPATH: /opt/airflow/src
+      SHOPPULSE_DATA_DIR: /data
+      MONGO_URI: mongodb://mongo:27017
+      _PIP_ADDITIONAL_REQUIREMENTS: "pandas requests beautifulsoup4 lxml pymongo mongomock matplotlib seaborn flask"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - shoppulse_data:/data
+    depends_on:
+      mongo: { condition: service_healthy }
+
+volumes:
+  mongo_data:
+  shoppulse_data:

@@ -1,0 +1,13 @@
+pandas>=2.2
+numpy>=1.26
+requests>=2.31
+beautifulsoup4>=4.12
+lxml>=5.0
+pymongo>=4.6
+mongomock>=4.1
+flask>=3.0
+gunicorn>=22.0
+dash>=2.17
+plotly>=5.22
+matplotlib>=3.8
+seaborn>=0.13

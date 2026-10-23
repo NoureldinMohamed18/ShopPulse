@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shoppulse"
+version = "1.0.0"
+description = "End-to-end data engineering platform: 4 sources -> pipeline -> star-schema warehouse -> API + dashboard"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.2", "numpy>=1.26", "requests>=2.31", "beautifulsoup4>=4.12", "lxml>=5.0",
+    "pymongo>=4.6", "mongomock>=4.1", "flask>=3.0", "dash>=2.17", "plotly>=5.22",
+    "matplotlib>=3.8", "seaborn>=0.13",
+]
+
+[project.scripts]
+shoppulse = "shoppulse.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+shoppulse = ["sql/*.sql"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+src = ["src", "tests", "dags"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["B008", "E501"]  # long SQL strings are fine; line length is a formatter concern
